@@ -22,11 +22,11 @@ class RunPipelines():
         self.logger = logging.getLogger('run pipelines')
 
         # These keep the imports from being optimized away
-        register_ingesters.RegisterIngesters()
-        register_preprocessesors.RegisterPreprocessors()
-        register_analytics.RegisterAnalytics()
-        register_postprocessors.RegisterPostprocessors()
-        register_pipelines.RegisterPipelines()
+        RegisterIngesters()
+        RegisterPreprocessors()
+        RegisterAnalytics()
+        RegisterPostprocessors()
+        RegisterPipelines()
 
     def job_run_pipelines(self):
         # This would be triggered by a scheduler, timer, a rest call, or queue etc

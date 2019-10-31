@@ -19,7 +19,8 @@ class NewsPipeline():
         self.pipeline.append(NamedRegistries.Ingesters.registrations['NewsAPiIngester']())
 
         # PREPROCESS
-        self.pipeline.append(NamedRegistries.Preprocessors.registrations['DatabaseTextPreprocessor']())
+        self.pipeline.append(NamedRegistries.Preprocessors.registrations['DeduplicateDatabaseRecordsPreprocessor']())
+        self.pipeline.append(NamedRegistries.Preprocessors.registrations['CleanDatabaseArticles']())
 
         # ANALYTICS
         self.pipeline.append(NamedRegistries.Analytics.registrations['Topic1']())

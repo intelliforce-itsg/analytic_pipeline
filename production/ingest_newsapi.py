@@ -132,15 +132,14 @@ class IngestNewsApi():
             attempts_remaining = self.attempts
             complete = False
             while attempts_remaining > 0 and not complete:
-
-            news_url = f'https://newsapi.org/v2/everything?q={query}&pageSize=100&page{page}&apiKey={api_key}'
-            try:
-                news = requests.get(news_url).json()
-                articles.extend(news["articles"])
-                complete = True
-            except:
-                attempts_remaining -= 1
-                print(f'query attempts_remaining {attempts_remaining} for {news_url}')
+                news_url = f'https://newsapi.org/v2/everything?q={query}&pageSize=100&page{page}&apiKey={api_key}'
+                try:
+                    news = requests.get(news_url).json()
+                    articles.extend(news["articles"])
+                    complete = True
+                except:
+                    attempts_remaining -= 1
+                    print(f'query attempts_remaining {attempts_remaining} for {news_url}')
 
         return articles
 
