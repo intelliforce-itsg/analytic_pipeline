@@ -1,7 +1,9 @@
 import logging
 
-from named_registries import NamedRegistries
+from AnalyticPipeline.named_registries import NamedRegistries
 import os
+
+from AnalyticPipeline.production.ingest_newsapi import IngestNewsApi
 
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.DEBUG,
@@ -10,13 +12,12 @@ logging.basicConfig(format=format, level=logging.DEBUG,
 @NamedRegistries.Ingesters.register
 class NewsAPiIngester():
     def __init__(self):
-        os.join('production')
-        # import production.ingest_newsapi
-        # self.ingester = IngestNewsApi()
+        self.ingester = IngestNewsApi()
         self.logger = logging.getLogger('register news ingester')
 
     def run(self):
         self.logger.info(f'running news ingester')
+        self.ingester.run()
 
 
 @NamedRegistries.Ingesters.register

@@ -1,5 +1,5 @@
 import logging
-from named_registry import NamedRegistry
+from AnalyticPipeline.named_registry import NamedRegistry
 
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.DEBUG,

@@ -6,12 +6,12 @@ import threading
 import concurrent.futures
 from tqdm import tqdm
 
-import register_ingesters
-import register_preprocessesors
-import register_analytics
-import register_postprocessors
-import register_pipelines
-from named_registries import NamedRegistries
+from AnalyticPipeline.register_ingesters import RegisterIngesters
+from AnalyticPipeline.register_preprocessesors import RegisterPreprocessors
+from AnalyticPipeline.register_analytics import RegisterAnalytics
+from AnalyticPipeline.register_postprocessors import RegisterPostprocessors
+from AnalyticPipeline.register_pipelines import RegisterPipelines
+from AnalyticPipeline.named_registries import NamedRegistries
 
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.DEBUG,
