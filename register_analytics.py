@@ -7,6 +7,18 @@ logging.basicConfig(format=format, level=logging.DEBUG,
                     datefmt="%m/%d/%Y %H:%M:%S")
 
 @NamedRegistries.Analytics.register
+class LanguageDetection():
+
+    def __init__(self):
+        self.logger = logging.getLogger('initializing Language Detection analytic')
+        self.analytic = LanguageDetection()
+
+    def run(self):
+        self.logger.info(f'running Language Detection')
+        self.analytic.run()
+
+
+@NamedRegistries.Analytics.register
 class NER1():
     def __init__(self):
         self.logger = logging.getLogger('initializing NER1 analytic')

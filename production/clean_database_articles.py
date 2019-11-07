@@ -41,7 +41,7 @@ class CleanDatabaseArticles():
 
         # ideally the most recent -- or most text will be at the top
         #    sql = 'select name, url, id, body from articles order by url, LENGTH(body) desc'
-        sql = 'select name, url, id, body, source, author from articles'
+        sql = 'select name, url, id, body, source, author from articles order by publish_date desc'
 
 
         cursor.execute(sql)
@@ -76,3 +76,5 @@ class CleanDatabaseArticles():
 if __name__ == '__main__':
     preprocessor = CleanDatabaseArticles()
     preprocessor.run()
+    os.exit(1)
+

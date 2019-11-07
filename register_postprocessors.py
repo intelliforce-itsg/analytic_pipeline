@@ -16,15 +16,6 @@ class NewsPostprocessor():
         self.logger.info(f'running news postprocessor')
 
 
-@NamedRegistries.Postprocessors.register
-class TweetPostprocessor():
-    def __init__(self):
-        self.logger = logging.getLogger('register tweet postprocessor')
-
-    def run(self):
-        self.logger.info(f'running tweet postprocessor')
-
-
 class RegisterPostprocessors():
     def __init__(self):
         self.logger = logging.getLogger('register postprocessors')

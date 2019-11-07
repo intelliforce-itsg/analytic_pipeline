@@ -20,14 +20,6 @@ class NewsAPiIngester():
         self.ingester.run()
 
 
-@NamedRegistries.Ingesters.register
-class TwitterIngester():
-    def __init__(self):
-        self.logger = logging.getLogger('production/ingest')
-
-    def run(self):
-        self.logger.info(f'running twitter ingester')
-
 class RegisterIngesters():
     def __init__(self):
         self.logger = logging.getLogger('register ingesters')

@@ -134,5 +134,6 @@ class DeduplicateDatabaseRecords():
             cnx.close()
 
 if __name__ == '__main__':
-    preprocessor = DedupDatabaseRecords()
+    preprocessor = DeduplicateDatabaseRecords()
     preprocessor.run()
+    os.exit(1)

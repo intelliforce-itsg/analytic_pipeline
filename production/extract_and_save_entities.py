@@ -16,9 +16,10 @@ import matplotlib.pyplot as plt
 import numpy as np  # linear algebra
 import pandas as pd  # data processing, CSV file I/O (e.g. pd.read_csv)
 from docopt import docopt
-from keras.models import load_model
-from keras.preprocessing.sequence import pad_sequences
-from keras.utils import to_categorical
+import tensorflow
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
 from future.utils import iteritems
 from datetime import date, datetime, timedelta
 import mysql.connector
@@ -27,6 +28,25 @@ import spacy
 import os
 
 from tqdm import tqdm
+
+from tensorflow.keras.preprocessing.text import Tokenizer
+from tensorflow.keras.preprocessing.sequence import pad_sequences
+from tensorflow.keras.utils import to_categorical
+from tensorflow.keras.layers import Dense, Input, GlobalMaxPooling1D, Conv1D, MaxPooling1D, Embedding, Flatten
+from tensorflow.keras.layers import LSTM, Embedding, Dense, TimeDistributed, Dropout, Bidirectional
+from tensorflow.keras.initializers import he_normal
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.initializers import Constant
+from tensorflow.keras.callbacks import ModelCheckpoint
+from tensorflow.keras import models
+from tensorflow.keras.models import Model
+#from tensorflow.keras.datasets import reuters
+from tensorflow.compat.v2.keras.datasets import reuters
+from tensorflow.keras.utils import to_categorical
+import spacy
+
+spacy.prefer_gpu()
+#nlp = spacy.load("en_core_web_sm")
 
 plt.style.use("ggplot")
 
@@ -43,16 +63,22 @@ def database_connect():
     )
     return cnx
 
+
 def clean_data(data):
     if data is not None:
-        data = data.replace('b\'', '')
-        data = data.replace('\"', '')
-        data = data.replace('\'', '')
-        data = data.replace('%', '')
-        data = data.strip()
+        clean_data = data.strip()
+        clean_data = clean_data.replace("xc3x83xc2xa2xc3x82xc2x80xc3x82xc2x99", "'")
+        clean_data = clean_data.replace("xe2x80x99", "'")
+        clean_data = clean_data.replace('"', '\"')
+        if clean_data.startswith("b\'") or clean_data.startswith("b'"):
+            clean_data = clean_data[2:-1]
+        clean_data = clean_data.replace('\"', '')
+        clean_data = clean_data.replace('\'', '')
+        clean_data = clean_data.replace('%', '')
+        clean_data = clean_data.strip()
     else:
-        data = 'missing'
-    return data
+        clean_data = 'missing'
+    return clean_data
 
 
 def predict_document_ner(document, max_sentence_length):
@@ -63,7 +89,7 @@ def predict_document_ner(document, max_sentence_length):
     """
 
     # Parse the document into sentences
-    doc = nlp(clean_data(document))
+    doc = nlp(document)
     document = []
     for sent in doc.sents:
         sentence = []
@@ -143,108 +169,80 @@ if __name__ == '__main__':
         # print(f'max sentence length from data {maxlen} setting to 256')
         max_sentence_length = 256
 
+        done = False
 
         # process text data in english
-        nlp = spacy.load('en')
-        documents = []
-        all_sentences = []
-        all_words = []
-        if use_text_file is False:
-            cnx = database_connect()
-            cursor = cnx.cursor()
+        nlp = spacy.load('en_core_web_sm')
+        while done == False:
+            documents = []
+            all_sentences = []
+            all_words = []
+            if use_text_file is False:
+                cnx = database_connect()
+                cursor = cnx.cursor()
 
-            sql = 'select *  from articles inner join topic_tags tt on articles.ID = tt.article_id'
+                #sql = 'select *  from articles inner join topic_tags tt on articles.ID = tt.article_id order by publish_date desc '
+                # sql = 'select name, url, body, tag, id from articles_marks_topics where mark_type = "LID" and mark = "en" order by publish_date desc'
+                sql = 'select name, url, body, tag, amt.id from articles_marks_topics amt left outer join named_entities ne on amt.ID = ne.article_id  where ne.Id is null and mark_type = "LID" and mark = "en" order by publish_date desc'
+                # sql = 'select a.name, a.url, a.body, tt.tag, a.id from articles a inner join topic_tags tt on a.ID = tt.article_id left outer join named_entities ne on a.ID = ne.article_id where ne.Id is null'
 
-            cursor.execute(sql)
-            articles = cursor.fetchall()
-            X_train = []
-            print(len(articles))
-            for x in tqdm(articles):
-                X_train.append([clean_data(x[0]), clean_data(x[1]), clean_data(x[2]), clean_data(x[8]), x[9]])
+                cursor.execute(sql)
+                articles = cursor.fetchall()
+                cursor.close()
 
-            df = pd.DataFrame(X_train)
-            df.columns = ['title', 'url', 'article', 'tag', 'id']
-            print(f'Training data articles: {len(X_train)}')
+                if len(articles) <= 0:
+                    done = True
 
-            endpad_idx = word2idx['ENDPAD']
+                X_train = []
+                print(f'Found {len(articles)} articles needing NER processing')
+                for x in tqdm(articles):
+                    X_train.append([clean_data(x[0]), clean_data(x[1]), clean_data(x[2]), clean_data(x[3]), x[4]])
 
-            for index, article in df.iterrows():
+                df = pd.DataFrame(X_train)
+                df.columns = ['title', 'url', 'article', 'tag', 'id']
+                print(f'Extracting entities from  data articles: {len(X_train)}')
 
+                endpad_idx = word2idx['ENDPAD']
 
-                title = article['title']
-                article_id = article['id']
-                print(f'TITLE: {title}')
-                document, padded_document, document_tag_predictions = predict_document_ner(article['article'], max_sentence_length)
+                for index, article in df.iterrows():
+                    try:
+                        cursor = cnx.cursor()
 
-                # Blow out the old named entities -- this is a really bad idea TODO fixme
-                remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
-                cursor.execute(remove_named_entities_sql)
+                        title = article['title']
+                        article_id = article['id']
+                        print(f'{index} TITLE: {title}')
+                        document, padded_document, document_tag_predictions = predict_document_ner(article['article'], max_sentence_length)
 
-                for sentence_idx, sentence_tag_predictions in enumerate(document_tag_predictions):
-                    for word_idx, word_tag_prediction in enumerate(sentence_tag_predictions):
-                        if endpad_idx != padded_document[sentence_idx][word_idx]:
-                            word = idx2word[padded_document[sentence_idx][word_idx]]
-                            if word == 'UNKNOWN':
-                                try:
-                                    word = document[sentence_idx][word_idx]
-                                except Exception as e:
-                                    pass
-                            predicted_tag = idx2tag[word_tag_prediction]
-                            if predicted_tag != 'O':
-                                add_named_entity_sql = f'INSERT into named_entities (named_entity, word, article_id, sentence_index, word_index) VALUES ("{predicted_tag}", "{word}", {article_id}, {sentence_idx}, {word_idx} )'
-                                cursor.execute(add_named_entity_sql)
+                        # Blow out the old named entities -- this is a really bad idea TODO fixme
+                        remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
+                        cursor.execute(remove_named_entities_sql)
 
+                        for sentence_idx, sentence_tag_predictions in enumerate(document_tag_predictions):
+                            for word_idx, word_tag_prediction in enumerate(sentence_tag_predictions):
+                                if endpad_idx != padded_document[sentence_idx][word_idx]:
+                                    word = idx2word[padded_document[sentence_idx][word_idx]]
+                                    if word == 'UNKNOWN':
+                                        try:
+                                            word = document[sentence_idx][word_idx]
+                                        except Exception as e:
+                                            pass
+                                    predicted_tag = idx2tag[word_tag_prediction]
+                                    if predicted_tag != 'O':
+                                        try:
+                                            add_named_entity_sql = f'INSERT into named_entities (named_entity, word, article_id, sentence_index, word_index) VALUES ("{predicted_tag}", "{word}", {article_id}, {sentence_idx}, {word_idx} )'
+                                            cursor.execute(add_named_entity_sql)
+                                        except Exception as e:
+                                            print(f'INSERT NER failed {e}')
 
-                            #print(f'{word}:{predicted_tag}')
+                                    #print(f'{word}:{predicted_tag}')
 
-                #print('')
-                cnx.commit()
-            cursor.close()
-            cnx.close()
+                        #print('')
+                        cnx.commit()
+                    except Exception as e:
+                        print(e)
+                    finally:
+                        cursor.close()
+
+                cnx.close()
     finally:
         exit(0)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

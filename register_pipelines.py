@@ -23,6 +23,7 @@ class NewsPipeline():
         self.pipeline.append(NamedRegistries.Preprocessors.registrations['CleanDatabaseArticles']())
 
         # ANALYTICS
+        self.pipeline.append(NamedRegistries.Analytics.registrations['LanguageDetection']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['Topic1']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['NER1']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['Sentiment1']())
@@ -39,29 +40,6 @@ class NewsPipeline():
             self.logger.debug(f'Start')
             analytic.run()
             self.logger.debug(f'End')
-
-@NamedRegistries.Pipelines.register
-class TwitterPipeline():
-
-    def __init__(self):
-        self.logger = logging.getLogger('register Twitter pipeline')
-
-    def build_pipeline(self):
-        self.pipeline = []
-
-        # INGEST
-        self.pipeline.append(NamedRegistries.Ingesters.registrations['TwitterIngester']())
-
-        # PREPROCESS
-        self.pipeline.append(NamedRegistries.Preprocessors.registrations['TweetPreprocessor']())
-
-        # ANALYTICS
-        self.pipeline.append(NamedRegistries.Analytics.registrations['NER2']())
-        self.pipeline.append(NamedRegistries.Analytics.registrations['Topic1']())
-        self.pipeline.append(NamedRegistries.Analytics.registrations['Sentiment1']())
-
-        #POSTPROCESS
-        self.pipeline.append(NamedRegistries.Postprocessors.registrations['TweetPostprocessor']())
 
 
     def run(self):
