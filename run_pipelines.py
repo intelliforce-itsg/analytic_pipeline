@@ -47,7 +47,7 @@ if __name__ == "__main__":
 
     # Thinking YAML injection
 
-    schedule.every(12).hour.do(pipeline_runner.job_run_pipelines)
+    schedule.every(12).hours.do(pipeline_runner.job_run_pipelines)
     # schedule.every().hour.do(job)
     # schedule.every().day.at("10:30").do(job)
     # schedule.every(5).to(10).minutes.do(job)
