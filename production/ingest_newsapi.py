@@ -11,6 +11,8 @@ import requests
 from bs4 import BeautifulSoup
 # Retrieve set environment variables
 from tqdm import tqdm
+import spacy
+spacy.prefer_gpu()
 
 PASSWORD = os.environ.get('NEWS_DB_PASSWORD')
 
@@ -210,7 +212,7 @@ class IngestNewsApi():
     def is_duplicate(self, cursor, name, url):
         duplicate = False
         try:
-            sql = f'SELECT id, name, url, body, publish_date, author, source from articles where url = "{url}" and name = "{name}"'
+            sql = f'SELECT id, name, url, body, publish_date, author, source from articles where url = "{self.clean_data(url)}" and name = "{name}"'
             cursor.execute(sql)
             articles = cursor.fetchall()
             if (len(articles) > 0):
@@ -222,7 +224,7 @@ class IngestNewsApi():
         except Exception as e:
             print(e)
             try:
-                sql = f'SELECT id, name, url, body, publish_date, author, source from articles where url = "{url.encode()}" and name = "{name}"'
+                sql = f'SELECT id, name, url, body, publish_date, author, source from articles where url = "{self.clean_data(url)}" and name = "{name}"'
                 cursor.execute(sql)
                 articles = cursor.fetchall()
                 if (len(articles) > 0):
@@ -246,20 +248,24 @@ class IngestNewsApi():
             title = article["title"]
             content = article["content"]
             url = article["url"]
+            image_url = article["urlToImage"]
             publish_date = article["publishedAt"]
             source = article["source"]["name"]
+            # None or url
 
             title = self.clean_data(title)
             author = self.clean_data(author)
             content = self.clean_data(content)
             source = self.clean_data(source)
             publish_date_obj = dt.strptime(publish_date, "%Y-%m-%dT%H:%M:%SZ")
+            url = self.clean_data(url)
+            image_url = self.clean_data(image_url)
 
             duplicate = self.is_duplicate(cursor, title, url)
 
             if duplicate is False:
                 try:
-                    add_artcle = f'INSERT INTO articles(name, url, body, source, author, publish_date ) VALUES ("{title}", "{url.encode()}", "{content}", "{source}", "{author}", "{publish_date_obj}" )'
+                    add_artcle = f'INSERT INTO articles(name, url, image_url, body, source, author, publish_date ) VALUES ("{title}", "{url}", "{image_url}", "{content}", "{source}", "{author}", "{publish_date_obj}" )'
                     cursor.execute(add_artcle)
 
                     article_id = cursor.lastrowid
@@ -268,7 +274,7 @@ class IngestNewsApi():
                     cursor.execute(add_topic_tag)
 
                     cnx.commit()
-                except:
+                except Exception as e:
                     cnx.rollback()
         return
 
@@ -319,38 +325,6 @@ class IngestNewsApi():
             # Open a database cursor
             cursor = cnx.cursor()
 
-            # usa_today_top_news = UsaTodaySource()
-            # for index, article in usa_today_top_news.iterrows():
-            #
-            #     title = "missing title"
-            #     if article['title'] is not None:
-            #         title =article['title']
-            #
-            #     url = article['url']
-            #     content = "missing content"
-            #     if article['body'] is not None or len(article['body']) > 0:
-            #         content = article['body']
-            #
-            #     author = "unknown"
-            #     if article['author'] is not None:
-            #         title = article['author']
-            #
-            #     # publish_date = article["publishedAt"]
-            #     # # 2019-09-10T21:15:35+00:00
-            #     # publish_date_obj = datetime.strptime(publish_date, "%Y-%m-%dT%H:%M:%SZ")
-            #     # #"%Y-%m-%d %H:%M:%S"
-            #     # #publish_date_obj.
-            #
-            #     source = 'usa today'
-            #
-            #     title = clean_data(title)
-            #     author = clean_data(author)
-            #     content = clean_data(content)
-            #     source = clean_data(source)
-            #
-            #     add_artcle = f'INSERT INTO articles(name, url, body, source, author ) VALUES ("{title}", "{url}", "{content}", "{source}", "{author}")'
-            #     cursor.execute(add_artcle)
-            #     cnx.commit()
 
             now = dt.now()
             current_date = now.strftime("%Y-%m-%d")
@@ -361,55 +335,13 @@ class IngestNewsApi():
             # for days_to_subtract in range(30):
 
             #  How many days in the past are we querying?
-            days_to_subtract = 1
+            days_to_subtract = 7
             from_date = (now - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
             to_date = (now).strftime("%Y-%m-%d")
 
             for query in query_topic_dict.keys():
                 tag = query_topic_dict[query]
                 self.ingest_newsapi_v2_source(cnx, cursor, query, tag, from_date, to_date)
-
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'Federal AI', 'FED_AI',from_date,to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'artificial intelligence', 'AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'ai', 'AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'machine learning', 'ML', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'technology', 'TECHNOLOGY', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'money', 'MONEY', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'economics', 'ECONOMICS', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'finance', 'FINANCE', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'travel', 'TRAVEL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'destination', 'TRAVEL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'politics', 'POLITICS', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'manufacturing', 'MANUFACTURING', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'Additive Manufacturing', 'ADDITIVE_MANUFACTURING', from_date,
-            #                               to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'robotics', 'ROBOTICS', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'nasa', 'NASA', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'dod', 'DOD', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'NSA', 'NSA', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, '\"ai+initiative\"', 'FED_AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, '\"ai+executive+order\"', 'FED_AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'JAIC', 'FED_AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'Military AI Complex', 'FED_AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'war', 'WAR', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'terror', 'TERROR', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'terrorist', 'TERROR', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'military', 'MILITARY', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'medical', 'MEDICAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'pharmaceutical', 'MEDICAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'medicine', 'MEDICAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'pharmacy', 'MEDICAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'surgical', 'MEDICAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'american ai', 'AI', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'cyber', 'CYBER', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'cybercom', 'CYBER', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'exploit', 'CYBER', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'zero day', 'CYBER', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'federal', 'FEDERAL', from_date, to_date)
-            # self.ingest_newsapi_v2_source(cnx, cursor, 'government', 'GOVERNMENT', from_date, to_date)
-
-            # articles = NewsApiV2('american ai initiative')
-            # articles = NewsApiV2('federal ai initiative')
         finally:
             cursor.close()
             cnx.close()

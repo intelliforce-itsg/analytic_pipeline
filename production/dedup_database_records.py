@@ -72,19 +72,32 @@ class DeduplicateDatabaseRecords():
                 url = article['url']
                 tag = article['tag']
                 body = article['body']
+                name = article['name']
+                id = article['id']
+
 
                 # Skip FED_AI topics
                 if url == last_url:
                     id = article['id']
+
+                    print(f'Removing duplicated #{index}, ID: {id} TITLE: {name}')
+
+                    # remove topic tags
+                    remove_marks_sql = f'delete from marks where article_id = {id}'
+                    cursor.execute(remove_marks_sql)
+
                     # remove topic tags
                     remove_topics_sql = f'delete from topic_tags where article_id = {id}'
                     cursor.execute(remove_topics_sql)
+
                     #remove named entities
                     remove_named_entities_sql = f'delete from named_entities where article_id = {id}'
                     cursor.execute(remove_named_entities_sql)
+
                     # remove record
                     dedup_sql = f'delete from articles where ID = {id}'
                     cursor.execute(dedup_sql)
+
                     cnx.commit()
                 else:
                     last_url = url
@@ -111,19 +124,30 @@ class DeduplicateDatabaseRecords():
             for index, article in tqdm(df.iterrows()):
                 url = article['url']
                 tag = article['tag']
+                name = article['name']
+                id = article['id']
 
                 # Skip FED_AI topics
                 if url == last_url:
+                    print(f'Removing duplicated #{index}, ID: {id} TITLE: {name}')
+
                     id = article['id']
+                    # remove topic tags
+                    remove_marks_sql = f'delete from marks where article_id = {id}'
+                    cursor.execute(remove_marks_sql)
+
                     # remove topic tags
                     remove_topics_sql = f'delete from topic_tags where article_id = {id}'
                     cursor.execute(remove_topics_sql)
+
                     #remove named entities
                     remove_named_entities_sql = f'delete from named_entities where article_id = {id}'
                     cursor.execute(remove_named_entities_sql)
+
                     # remove record
                     dedup_sql = f'delete from articles where ID = {id}'
                     cursor.execute(dedup_sql)
+
                     cnx.commit()
                 else:
                     last_url = url
@@ -136,4 +160,3 @@ class DeduplicateDatabaseRecords():
 if __name__ == '__main__':
     preprocessor = DeduplicateDatabaseRecords()
     preprocessor.run()
-    os.exit(1)

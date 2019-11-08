@@ -170,6 +170,7 @@ if __name__ == '__main__':
         max_sentence_length = 256
 
         done = False
+        total_processed = 0
 
         # process text data in english
         nlp = spacy.load('en_core_web_sm')
@@ -183,7 +184,11 @@ if __name__ == '__main__':
 
                 #sql = 'select *  from articles inner join topic_tags tt on articles.ID = tt.article_id order by publish_date desc '
                 # sql = 'select name, url, body, tag, id from articles_marks_topics where mark_type = "LID" and mark = "en" order by publish_date desc'
-                sql = 'select name, url, body, tag, amt.id from articles_marks_topics amt left outer join named_entities ne on amt.ID = ne.article_id  where ne.Id is null and mark_type = "LID" and mark = "en" order by publish_date desc'
+                sql = 'select name, url, body, tag, amt.id from articles_marks_topics amt '+\
+                      'left outer join named_entities ne on amt.ID = ne.article_id '+\
+                      ' where ne.Id is null and mark_type = "LID" and mark = "en" '+\
+                      'order by publish_date desc '+\
+                      'LIMIT 100'
                 # sql = 'select a.name, a.url, a.body, tt.tag, a.id from articles a inner join topic_tags tt on a.ID = tt.article_id left outer join named_entities ne on a.ID = ne.article_id where ne.Id is null'
 
                 cursor.execute(sql)
@@ -207,16 +212,15 @@ if __name__ == '__main__':
                 for index, article in df.iterrows():
                     try:
                         cursor = cnx.cursor()
-
+                        total_processed += 1
                         title = article['title']
                         article_id = article['id']
-                        print(f'{index} TITLE: {title}')
                         document, padded_document, document_tag_predictions = predict_document_ner(article['article'], max_sentence_length)
 
-                        # Blow out the old named entities -- this is a really bad idea TODO fixme
-                        remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
-                        cursor.execute(remove_named_entities_sql)
-
+                        # # Blow out the old named entities -- this is a really bad idea TODO fixme
+                        # remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
+                        # cursor.execute(remove_named_entities_sql)
+                        total_extracted = 0
                         for sentence_idx, sentence_tag_predictions in enumerate(document_tag_predictions):
                             for word_idx, word_tag_prediction in enumerate(sentence_tag_predictions):
                                 if endpad_idx != padded_document[sentence_idx][word_idx]:
@@ -231,12 +235,32 @@ if __name__ == '__main__':
                                         try:
                                             add_named_entity_sql = f'INSERT into named_entities (named_entity, word, article_id, sentence_index, word_index) VALUES ("{predicted_tag}", "{word}", {article_id}, {sentence_idx}, {word_idx} )'
                                             cursor.execute(add_named_entity_sql)
+                                            total_extracted += 1
                                         except Exception as e:
                                             print(f'INSERT NER failed {e}')
 
                                     #print(f'{word}:{predicted_tag}')
 
-                        #print('')
+                        if total_extracted == 0:
+                            print(f'Removing no entities total: {total_processed}, batch idx:{index}, extracted:{total_extracted} TITLE: {title}')
+                            # remove topic tags
+                            remove_marks_sql = f'delete from marks where article_id = {article_id}'
+                            cursor.execute(remove_marks_sql)
+
+                            # remove topic tags
+                            remove_topics_sql = f'delete from topic_tags where article_id = {article_id}'
+                            cursor.execute(remove_topics_sql)
+
+                            # remove named entities
+                            remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
+                            cursor.execute(remove_named_entities_sql)
+
+                            # remove record
+                            dedup_sql = f'delete from articles where id = {article_id}'
+                            cursor.execute(dedup_sql)
+                        else:
+                            print(f' total: {total_processed}, batch idx:{index}, extracted:{total_extracted} TITLE: {title}')
+
                         cnx.commit()
                     except Exception as e:
                         print(e)
@@ -246,3 +270,4 @@ if __name__ == '__main__':
                 cnx.close()
     finally:
         exit(0)
+
