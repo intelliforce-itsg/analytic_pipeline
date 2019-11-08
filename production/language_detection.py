@@ -52,7 +52,7 @@ class LanguageDetection():
         # ideally the most recent -- or most text will be at the top
         #    sql = 'select name, url, id, body from articles order by url, LENGTH(body) desc'
         #sql = 'select name, url, id, body, source, author from articles'
-        sql = 'select a.name, a.url, a.body, a.id from articles a left outer join marks m on a.Id = m.article_id where m.article_id is null order by publish_date desc'
+        sql = 'select a.name, a.url, a.id, a.body, a.source, a.author  from articles a left outer join marks m on a.Id = m.article_id where m.article_id is null order by publish_date desc'
 
         cursor.execute(sql)
         articles = cursor.fetchall()
@@ -68,9 +68,10 @@ class LanguageDetection():
             body = self.clean_data(article[3])
             source = self.clean_data(article[4])
             author = self.clean_data(article[5])
-            text = 'This is an english text.'
+
+            # detect language
             doc = nlp(body)
-            # {'language': 'en', 'score': 0.9999954772277541}
+
             language = doc._.language['language']
             score = doc._.language['score']
             try:
