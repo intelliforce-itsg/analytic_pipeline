@@ -20,7 +20,7 @@ class NewsPipeline():
 
         # PREPROCESS
         self.pipeline.append(NamedRegistries.Preprocessors.registrations['DeduplicateDatabaseRecordsPreprocessor']())
-        self.pipeline.append(NamedRegistries.Preprocessors.registrations['CleanDatabaseArticles']())
+        self.pipeline.append(NamedRegistries.Preprocessors.registrations['CleanDatabaseArticlesPreprocessor']())
 
         # ANALYTICS
         self.pipeline.append(NamedRegistries.Analytics.registrations['LanguageDetection']())
