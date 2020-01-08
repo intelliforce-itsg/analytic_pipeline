@@ -76,5 +76,4 @@ class CleanDatabaseArticles():
 if __name__ == '__main__':
     preprocessor = CleanDatabaseArticles()
     preprocessor.run()
-    os.exit(1)
 

@@ -1,13 +1,14 @@
 import logging
 
 from AnalyticPipeline.named_registries import NamedRegistries
+from AnalyticPipeline.production.language_detection import LanguageDetection
 
 format = "%(asctime)s: %(message)s"
 logging.basicConfig(format=format, level=logging.DEBUG,
                     datefmt="%m/%d/%Y %H:%M:%S")
 
 @NamedRegistries.Analytics.register
-class LanguageDetection():
+class LanguageDetectionAnalytic():
 
     def __init__(self):
         self.logger = logging.getLogger('initializing Language Detection analytic')

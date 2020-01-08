@@ -204,6 +204,7 @@ class IngestNewsApi():
             data = data.replace('\"', '')
             data = data.replace('\'', '')
             data = data.replace('%', '')
+            data = data.strip('[]')
             data = data.strip()
         else:
             data = 'missing'
@@ -335,7 +336,7 @@ class IngestNewsApi():
             # for days_to_subtract in range(30):
 
             #  How many days in the past are we querying?
-            days_to_subtract = 7
+            days_to_subtract = 1
             from_date = (now - timedelta(days=days_to_subtract)).strftime("%Y-%m-%d")
             to_date = (now).strftime("%Y-%m-%d")
 
@@ -345,8 +346,6 @@ class IngestNewsApi():
         finally:
             cursor.close()
             cnx.close()
-
-            exit(0)
 
 
 if __name__ == '__main__':

@@ -46,7 +46,8 @@ from tensorflow.keras.utils import to_categorical
 import spacy
 
 spacy.prefer_gpu()
-#nlp = spacy.load("en_core_web_sm")
+nlp = spacy.load("en_core_web_sm")
+nlp.max_length = 1000000
 
 plt.style.use("ggplot")
 
@@ -89,8 +90,13 @@ def predict_document_ner(document, max_sentence_length):
     """
 
     # Parse the document into sentences
+
     doc = nlp(document)
+
     document = []
+    padded_document = []
+    document_tag_predictions = []
+
     for sent in doc.sents:
         sentence = []
         for word in sent:
@@ -114,7 +120,6 @@ def predict_document_ner(document, max_sentence_length):
     # Predict the NER tags
     predictions = model.predict(np.array(padded_document))
 
-    document_tag_predictions = []
     # process each sentence
     for prediction in predictions:
     # for sentence_idx in range(len(predictions)):
@@ -172,8 +177,8 @@ if __name__ == '__main__':
         done = False
         total_processed = 0
 
+
         # process text data in english
-        nlp = spacy.load('en_core_web_sm')
         while done == False:
             documents = []
             all_sentences = []
@@ -187,7 +192,7 @@ if __name__ == '__main__':
                 sql = 'select name, url, body, tag, amt.id from articles_marks_topics amt '+\
                       'left outer join named_entities ne on amt.ID = ne.article_id '+\
                       ' where ne.Id is null and mark_type = "LID" and mark = "en" '+\
-                      'order by publish_date desc '+\
+                      'order by publish_date '+\
                       'LIMIT 100'
                 # sql = 'select a.name, a.url, a.body, tt.tag, a.id from articles a inner join topic_tags tt on a.ID = tt.article_id left outer join named_entities ne on a.ID = ne.article_id where ne.Id is null'
 
@@ -210,36 +215,41 @@ if __name__ == '__main__':
                 endpad_idx = word2idx['ENDPAD']
 
                 for index, article in df.iterrows():
+                    title = clean_data(article['title'])
+                    article_id = article['id']
+                    body = clean_data(article['article'])
+
                     try:
+                        total_extracted = 0
                         cursor = cnx.cursor()
                         total_processed += 1
-                        title = article['title']
-                        article_id = article['id']
-                        document, padded_document, document_tag_predictions = predict_document_ner(article['article'], max_sentence_length)
 
-                        # # Blow out the old named entities -- this is a really bad idea TODO fixme
-                        # remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
-                        # cursor.execute(remove_named_entities_sql)
-                        total_extracted = 0
-                        for sentence_idx, sentence_tag_predictions in enumerate(document_tag_predictions):
-                            for word_idx, word_tag_prediction in enumerate(sentence_tag_predictions):
-                                if endpad_idx != padded_document[sentence_idx][word_idx]:
-                                    word = idx2word[padded_document[sentence_idx][word_idx]]
-                                    if word == 'UNKNOWN':
-                                        try:
-                                            word = document[sentence_idx][word_idx]
-                                        except Exception as e:
-                                            pass
-                                    predicted_tag = idx2tag[word_tag_prediction]
-                                    if predicted_tag != 'O':
-                                        try:
-                                            add_named_entity_sql = f'INSERT into named_entities (named_entity, word, article_id, sentence_index, word_index) VALUES ("{predicted_tag}", "{word}", {article_id}, {sentence_idx}, {word_idx} )'
-                                            cursor.execute(add_named_entity_sql)
-                                            total_extracted += 1
-                                        except Exception as e:
-                                            print(f'INSERT NER failed {e}')
+                        # if it's larger than this blow it away
+                        if len(body) < 1000000:
+                            document, padded_document, document_tag_predictions = predict_document_ner(str(body), max_sentence_length)
 
-                                    #print(f'{word}:{predicted_tag}')
+                            # # Blow out the old named entities -- this is a really bad idea TODO fixme
+                            # remove_named_entities_sql = f'delete from named_entities where article_id = {article_id}'
+                            # cursor.execute(remove_named_entities_sql)
+                            for sentence_idx, sentence_tag_predictions in enumerate(document_tag_predictions):
+                                for word_idx, word_tag_prediction in enumerate(sentence_tag_predictions):
+                                    if endpad_idx != padded_document[sentence_idx][word_idx]:
+                                        word = idx2word[padded_document[sentence_idx][word_idx]]
+                                        if word == 'UNKNOWN':
+                                            try:
+                                                word = document[sentence_idx][word_idx]
+                                            except Exception as e:
+                                                pass
+                                        predicted_tag = idx2tag[word_tag_prediction]
+                                        if predicted_tag != 'O':
+                                            try:
+                                                add_named_entity_sql = f'INSERT into named_entities (named_entity, word, article_id, sentence_index, word_index) VALUES ("{predicted_tag}", "{word}", {article_id}, {sentence_idx}, {word_idx} )'
+                                                cursor.execute(add_named_entity_sql)
+                                                total_extracted += 1
+                                            except Exception as e:
+                                                print(f'INSERT NER failed {e}')
+
+                                        #print(f'{word}:{predicted_tag}')
 
                         if total_extracted == 0:
                             print(f'Removing no entities total: {total_processed}, batch idx:{index}, extracted:{total_extracted} TITLE: {title}')
@@ -263,11 +273,11 @@ if __name__ == '__main__':
 
                         cnx.commit()
                     except Exception as e:
+                        print(f"Error article id {article_id}, title: {title}")
                         print(e)
                     finally:
                         cursor.close()
 
                 cnx.close()
     finally:
-        exit(0)
-
+        pass

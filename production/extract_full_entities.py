@@ -50,6 +50,14 @@ try:
 
     # Build a list of article id's
     sql = f'select a.id, a.name, a.url, tt.tag from articles as a inner join topic_tags tt on a.id  = tt.article_id where tt.tag = \'{topic_tag}\' order by publish_date desc'
+
+    # sql =   "select a.id, a.name, a.url, tt.tag " \
+    #         "from articles a " \
+    #         "inner join topic_tags tt on a.ID = tt.article_id " \
+    #         "inner join named_entities ne on a.ID = ne.article_id " \
+    #         "where tt.tag in ('TERROR', 'WAR') and named_entity like '%-per' and body like '%ISIS%' " \
+    #         "order by publish_date desc, ne.article_id, ne.sentence_index, ne.word_index "
+
     cursor.execute(sql)
     articles = cursor.fetchall()
     for article in articles:
@@ -107,6 +115,3 @@ finally:
         v = entity_dictionary[k]
         print(f'{k}:{v}')
 
-
-    from sys import exit
-    exit(0)

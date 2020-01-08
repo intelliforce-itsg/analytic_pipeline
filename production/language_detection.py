@@ -93,4 +93,3 @@ class LanguageDetection():
 if __name__ == '__main__':
     analytic = LanguageDetection()
     analytic.run()
-    os.exit(1)

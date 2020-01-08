@@ -23,7 +23,7 @@ class NewsPipeline():
         self.pipeline.append(NamedRegistries.Preprocessors.registrations['CleanDatabaseArticlesPreprocessor']())
 
         # ANALYTICS
-        self.pipeline.append(NamedRegistries.Analytics.registrations['LanguageDetection']())
+        self.pipeline.append(NamedRegistries.Analytics.registrations['LanguageDetectionAnalytic']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['Topic1']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['NER1']())
         self.pipeline.append(NamedRegistries.Analytics.registrations['Sentiment1']())
